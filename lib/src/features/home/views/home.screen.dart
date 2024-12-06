@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:quotation_calculation/src/core/constants/app_colors.dart';
 import 'package:quotation_calculation/src/core/constants/icon_strings.dart';
 import 'package:quotation_calculation/src/core/constants/sizes.dart';
 import 'package:quotation_calculation/src/core/utils/formatters/formatter.dart';
 import 'package:quotation_calculation/src/core/views/widgets/svg_icon_builder.widget.dart';
+import 'package:quotation_calculation/src/features/home/models/quotation.model.dart';
 import 'package:quotation_calculation/src/features/home/views/general.screen.dart';
 import 'package:quotation_calculation/src/features/home/views/items.screen.dart';
 
@@ -17,6 +19,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin{
   List<String> items = ['Auckland Offices', 'Office 2', 'Office 3', 'Office 4', 'Office 5'];
   String? _selectedItem;
+
+  List<Quotation> quotations = [];
+
+  _updateList(Quotation quotation){
+    setState(() => quotations.add(quotation));
+  }
+  bool loading = false;
+
+  void _updateQuotations() async {
+    setState(() => loading = true);
+    items = await context.read<ItemViewModel>().fetchItems();
+    items.insert(0, Item(id: -1, itemName: 'Select an Item', price: 0.0));
+    setState(() {
+      _selectedItem = items.first;
+      _discountController.text = "0";
+      _qtyController.text = "1";
+      loading = false;
+    });
+  }
 
   late TabController _tabController;
   final _tabs = [
@@ -112,9 +133,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [
-                  GeneralScreen(),
-                  ItemsScreen(),
+                children: [
+                  GeneralScreen(onAddPressed: _updateList),
+                  const ItemsScreen(),
                 ],
               ),
             )

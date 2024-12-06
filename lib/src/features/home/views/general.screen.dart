@@ -1,15 +1,20 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:quotation_calculation/src/core/constants/app_colors.dart';
 import 'package:quotation_calculation/src/core/constants/app_strings.dart';
 import 'package:quotation_calculation/src/core/constants/sizes.dart';
 import 'package:quotation_calculation/src/core/utils/helpers/helper_functions.dart';
+import 'package:quotation_calculation/src/core/utils/validators/validations.dart';
 import 'package:quotation_calculation/src/core/views/widgets/custom.circular_progress_indicator.dart';
 import 'package:quotation_calculation/src/features/home/models/item.model.dart';
+import 'package:quotation_calculation/src/features/home/models/quotation.model.dart';
 import 'package:quotation_calculation/src/features/home/view_models/Items.view_model.dart';
 
 class GeneralScreen extends StatefulWidget {
-  const GeneralScreen({super.key});
+  final Function(Quotation) onAddPressed;
+  const GeneralScreen({super.key, required this.onAddPressed});
 
   @override
   State<GeneralScreen> createState() => _GeneralScreenState();
@@ -24,15 +29,32 @@ class _GeneralScreenState extends State<GeneralScreen> {
   final _discountController = TextEditingController();
 
   List<Item> items = [];
+  List<DataRow> rows = [];
+  List<Quotation> quotation = [];
   Item? _selectedItem;
   bool loading = false;
+  double netAmount = 0.0;
 
-  _loadItems() async {
+  void _loadItems() async {
     setState(() => loading = true);
     items = await context.read<ItemViewModel>().fetchItems();
+    items.insert(0, Item(id: -1, itemName: 'Select an Item', price: 0.0));
     setState(() {
       _selectedItem = items.first;
+      _discountController.text = "0";
+      _qtyController.text = "1";
       loading = false;
+    });
+  }
+
+  void _clearTextFields(){
+    setState(() {
+      _selectedItem = items.first;
+      _itemController.clear();
+      _reasonController.clear();
+      _priceController.clear();
+      _qtyController.clear();
+      _discountController.clear();
     });
   }
 
@@ -71,7 +93,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                     ),
                   ),
                   Text(
-                    '1,900',
+                    netAmount.toString(),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppColors.white,
                     ),
@@ -94,8 +116,13 @@ class _GeneralScreenState extends State<GeneralScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                       underline: const SizedBox(),
-                      onChanged: (Item? newValue) {
-                        setState(() => _selectedItem = newValue!);
+                      onChanged: (Item? item) {
+                        _clearTextFields();
+                        setState(() {
+                          _selectedItem = item!;
+                          _itemController.text = item.itemName;
+                          _priceController.text = item.price.toString();
+                        });
                       },
                       items: items.map<DropdownMenuItem<Item>>((Item value) {
                         return DropdownMenuItem<Item>(
@@ -108,13 +135,16 @@ class _GeneralScreenState extends State<GeneralScreen> {
                       decoration: const InputDecoration(
                         label: Text(AppStrings.searchLabel),
                       ),
+                      validator: (value) => validateEmptyField('Item', value),
                       controller: _itemController,
+
                     ),
                     const SizedBox(height: Sizes.spaceBtwInputField),
                     TextFormField(
                       decoration: const InputDecoration(
                         label: Text(AppStrings.reasonLabel),
                       ),
+                      validator: (value) => validateEmptyField(AppStrings.reasonLabel, value),
                       controller: _reasonController,
                     ),
                     const SizedBox(height: Sizes.spaceBtwInputField),
@@ -122,6 +152,8 @@ class _GeneralScreenState extends State<GeneralScreen> {
                       decoration: const InputDecoration(
                         label: Text(AppStrings.priceLabel),
                       ),
+                      readOnly: true,
+                      validator: (value) => validateEmptyField(AppStrings.priceLabel, value),
                       controller: _priceController,
                     ),
                     const SizedBox(height: Sizes.spaceBtwInputField),
@@ -134,7 +166,23 @@ class _GeneralScreenState extends State<GeneralScreen> {
                             decoration: const InputDecoration(
                               label: Text(AppStrings.qtyLabel),
                             ),
+                            onChanged: (value){
+                              if(value.isNotEmpty) {
+                                int discount = int.parse(value);
+                                if (discount < 1) {
+                                  _qtyController.text = "1";
+                                }
+                                _qtyController.selection = TextSelection.fromPosition(
+                                  TextPosition(offset: _qtyController.text.length),
+                                );
+                              }
+                            },
+                            validator: (value) => validateEmptyField(AppStrings.qtyLabel, value),
                             controller: _qtyController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: <TextInputFormatter>[
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
                           ),
                         ),
                         const SizedBox(width: Sizes.md),
@@ -143,6 +191,23 @@ class _GeneralScreenState extends State<GeneralScreen> {
                             decoration: const InputDecoration(
                               label: Text('${AppStrings.discountLabel} %'),
                             ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: <TextInputFormatter>[
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                            ],
+                            onChanged: (value){
+                              if(value.isNotEmpty) {
+                                double discount = double.parse(value);
+                                if (discount < 0) {
+                                  _discountController.text = "0";
+                                } else if (discount > 100) {
+                                  _discountController.text = "100";
+                                }
+                                _discountController.selection = TextSelection.fromPosition(
+                                  TextPosition(offset: _discountController.text.length),
+                                );
+                              }
+                            },
                             controller: _discountController,
                           ),
                         ),
@@ -151,15 +216,44 @@ class _GeneralScreenState extends State<GeneralScreen> {
                           child: const Text(AppStrings.addLabel),
                           onPressed: (){
                             FocusScope.of(context).unfocus();
-                            print(_itemController.text);
+                            //Navigator.of(context).push(MaterialPageRoute(builder: (context) => TestScreen()));
+                            if (_formKey.currentState!.validate()) {
+                              double discount =  double.parse(_discountController.text.trim());
+                              int qty =  int.parse(_qtyController.text.trim());
+                              double total = (_selectedItem!.price * qty) * (100 - discount) / 100;
+                              Quotation tempQtn = Quotation(
+                                item: _selectedItem!,
+                                qty: qty,
+                                discount:discount,
+                                total: total,
+                              );
+                              _buildDataRow(tempQtn);
+                              setState(() {
+                                quotation.add(tempQtn);
+                                netAmount += tempQtn.total;
+                              });
+                              widget.onAddPressed(tempQtn);
+                              _clearTextFields();
+                            }
                           },
-                        )
-
+                        ),
                       ],
                     ),
                     const SizedBox(height: Sizes.spaceBtwItems),
                     ///table
-                    _buildTable()
+                    DataTable(
+                      headingRowColor: WidgetStateProperty.all(AppColors.grey),
+                      horizontalMargin: 0,
+                      columnSpacing: 0,
+                      columns: <DataColumn>[
+                        _buildTableColumn(title: AppStrings.itemLabel),
+                        _buildTableColumn(title: AppStrings.priceLabel),
+                        _buildTableColumn(title: AppStrings.qtyLabel),
+                        _buildTableColumn(title: AppStrings.discountLabel),
+                        _buildTableColumn(title: AppStrings.totalLabel),
+                      ],
+                      rows: rows.isEmpty ? _buildEmptyRow('No Data') : rows,
+                    )
                   ],
                 ),
               ),
@@ -170,40 +264,32 @@ class _GeneralScreenState extends State<GeneralScreen> {
     );
   }
 
-  Widget _buildTable(){
-    return DataTable(
-      headingRowColor: WidgetStateProperty.all(AppColors.grey),
-      horizontalMargin: 0,
-      columnSpacing: 0,
+  void _buildDataRow(Quotation quotation){
+      rows.add(
+        DataRow(
+          cells: <DataCell>[
+            _buildDataCell(value: quotation.item.itemName),
+            _buildDataCell(value: quotation.item.price.toString()),
+            _buildDataCell(value: quotation.qty.toString()),
+            _buildDataCell(value: quotation.discount.toString()),
+            _buildDataCell(value: quotation.total.toString()),
+          ],
+        ),
+      );
+  }
 
-      columns: <DataColumn>[
-        _buildTableColumn(title: AppStrings.itemLabel),
-        _buildTableColumn(title: AppStrings.priceLabel),
-        _buildTableColumn(title: AppStrings.qtyLabel),
-        _buildTableColumn(title: AppStrings.discountLabel),
-        _buildTableColumn(title: AppStrings.totalLabel),
-      ],
-      rows: <DataRow>[
-        DataRow(
-          cells: <DataCell>[
-            _buildDataCell(value: 'itemAitemA'),
-            _buildDataCell(value: '100.0'),
-            _buildDataCell(value: '5'),
-            _buildDataCell(value: '5'),
-            _buildDataCell(value: '450'),
-          ],
-        ),
-        DataRow(
-          cells: <DataCell>[
-            _buildDataCell(value: 'itemA'),
-            _buildDataCell(value: '100.0'),
-            _buildDataCell(value: '5'),
-            _buildDataCell(value: '5'),
-            _buildDataCell(value: '450'),
-          ],
-        ),
-      ],
-    );
+  List<DataRow> _buildEmptyRow(String value) {
+    return [
+      DataRow(
+        cells: <DataCell>[
+          _buildDataCell(),
+          _buildDataCell(),
+          _buildDataCell(value: 'No Data'),
+          _buildDataCell(),
+          _buildDataCell(),
+        ],
+      ),
+    ];
   }
 
   DataColumn _buildTableColumn({required String title}){
@@ -219,7 +305,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
     );
   }
 
-  DataCell _buildDataCell({required String value}){
+  DataCell _buildDataCell({String value = ''}){
     return DataCell(
       Container(
         width: (HelperFunctions.screenWidth(context)-(Sizes.md)) / 5.7,
@@ -234,4 +320,5 @@ class _GeneralScreenState extends State<GeneralScreen> {
       ),
     );
   }
+
 }
