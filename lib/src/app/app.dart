@@ -8,6 +8,7 @@ import 'package:quotation_calculation/src/app/themes/theme.dart';
 import 'package:quotation_calculation/src/core/constants/app_strings.dart';
 import 'package:quotation_calculation/src/core/utils/helpers/helper_functions.dart';
 import 'package:quotation_calculation/src/features/home/view_models/Items.view_model.dart';
+import 'package:quotation_calculation/src/features/home/view_models/quotations.view_model.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -34,6 +35,7 @@ class _AppState extends State<App> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ItemViewModel>(create: (_) => ItemViewModel()),
+        ChangeNotifierProvider<QuotationViewModel>(create: (_) => QuotationViewModel()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

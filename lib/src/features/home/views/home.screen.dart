@@ -4,8 +4,10 @@ import 'package:quotation_calculation/src/core/constants/app_colors.dart';
 import 'package:quotation_calculation/src/core/constants/icon_strings.dart';
 import 'package:quotation_calculation/src/core/constants/sizes.dart';
 import 'package:quotation_calculation/src/core/utils/formatters/formatter.dart';
+import 'package:quotation_calculation/src/core/views/widgets/custom.circular_progress_indicator.dart';
 import 'package:quotation_calculation/src/core/views/widgets/svg_icon_builder.widget.dart';
 import 'package:quotation_calculation/src/features/home/models/quotation.model.dart';
+import 'package:quotation_calculation/src/features/home/view_models/quotations.view_model.dart';
 import 'package:quotation_calculation/src/features/home/views/general.screen.dart';
 import 'package:quotation_calculation/src/features/home/views/items.screen.dart';
 
@@ -17,33 +19,39 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin{
-  List<String> items = ['Auckland Offices', 'Office 2', 'Office 3', 'Office 4', 'Office 5'];
-  String? _selectedItem;
 
+  late TabController _tabController;
+
+  final _tabs = [const Tab(text: 'General'), const Tab(text: 'Items')];
+  final List<String> items = ['Auckland Offices', 'Office 2', 'Office 3', 'Office 4', 'Office 5'];
+
+  bool clear = true;
+  bool loading = false;
+  String? _selectedItem;
   List<Quotation> quotations = [];
 
-  _updateList(Quotation quotation){
-    setState(() => quotations.add(quotation));
-  }
-  bool loading = false;
-
-  void _updateQuotations() async {
-    setState(() => loading = true);
-    items = await context.read<ItemViewModel>().fetchItems();
-    items.insert(0, Item(id: -1, itemName: 'Select an Item', price: 0.0));
+  void _updateList(Quotation quotation){
     setState(() {
-      _selectedItem = items.first;
-      _discountController.text = "0";
-      _qtyController.text = "1";
-      loading = false;
+      quotations.add(quotation);
+      clear = false;
     });
   }
 
-  late TabController _tabController;
-  final _tabs = [
-    const Tab(text: 'General'),
-    const Tab(text: 'Items'),
-  ];
+  void _saveQuotations(List<Quotation> quotationsList) async {
+    setState(() => loading = true);
+    await context.read<QuotationViewModel>().addQuotations(context, quotationsList);
+    if(mounted) {
+      await context.read<QuotationViewModel>().fetchQuotationNo(context);
+    }
+    if(mounted) {
+      await context.read<QuotationViewModel>().fetchQuotations(context);
+    }
+    setState(() {
+      clear = true;
+      quotations = [];
+      loading = false;
+    });
+  }
 
   @override
   void initState() {
@@ -64,13 +72,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             color: AppColors.white,
           ),
           IconButton(
-            onPressed: (){},
-            icon: const CSvgIconBuilder(
-              icon: IconStrings.checkmarkIcon,
-              color: AppColors.white,
-            )
+              onPressed: quotations.isEmpty ? null : ()=>_saveQuotations(quotations),
+              icon: loading ? const CCircularProgressIndicator(color: AppColors.white) :
+              CSvgIconBuilder(
+                icon: IconStrings.checkmarkIcon,
+                color: quotations.isEmpty ? AppColors.darkGrey: AppColors.white,
+              )
           ),
-
         ],
       ),
       body: Padding(
@@ -134,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  GeneralScreen(onAddPressed: _updateList),
+                  GeneralScreen(onAddPressed: _updateList, isClear: clear),
                   const ItemsScreen(),
                 ],
               ),
