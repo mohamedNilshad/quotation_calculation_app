@@ -162,36 +162,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
                       ),
 
                     ///form
-                    // DropdownButton<Item>(
-                    //   hint: const Text("Select an Item"),
-                    //   value: _selectedItem,
-                    //   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    //   underline: const SizedBox(),
-                    //   onChanged: (Item? item) {
-                    //     _clearTextFields();
-                    //     setState(() {
-                    //       _selectedItem = item!;
-                    //       _itemController.text = item.itemName;
-                    //       _priceController.text = item.price.toString();
-                    //     });
-                    //   },
-                    //   items: items.map<DropdownMenuItem<Item>>((Item value) {
-                    //     return DropdownMenuItem<Item>(
-                    //       value: value,
-                    //       child: Text(value.itemName),
-                    //     );
-                    //   }).toList(),
-                    // ),
-                    // TextFormField(
-                    //   decoration: const InputDecoration(
-                    //     label: Text(AppStrings.searchLabel),
-                    //   ),
-                    //   validator: (value) => validateEmptyField('Item', value),
-                    //   controller: _itemController,
-                    //
-                    // ),
                     const SizedBox(height: Sizes.spaceBtwInputField),
                     TextFormField(
                       decoration: const InputDecoration(
