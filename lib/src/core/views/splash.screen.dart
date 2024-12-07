@@ -16,7 +16,6 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
 
   _setData() async {
-    // await context.read<ItemViewModel>().deleteDb();
     await context.read<QuotationViewModel>().fetchQuotationNo(context);
     Navigator.pushNamedAndRemoveUntil(
       context, RouteConstants.homeScreen, (route) => false,
@@ -37,11 +36,23 @@ class _SplashScreenState extends State<SplashScreen> {
         height: HelperFunctions.screenHeight(context),
         alignment: Alignment.center,
         color: AppColors.primary,
-        child: Text(
-          AppStrings.brandLabel,
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-            color: AppColors.white,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              AppStrings.brandLabel,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                color: AppColors.white,
+              ),
+            ),
+            Text(
+              'App',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                color: AppColors.white,
+              ),
+            ),
+          ],
         ),
       ),
     );

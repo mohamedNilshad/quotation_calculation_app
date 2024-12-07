@@ -1,7 +1,7 @@
 class AppStrings {
   const AppStrings._();
 
-  static const String brandLabel = "Quotation Calculation App";
+  static const String brandLabel = "Quotation Calculation";
 
   ///error
   static const String serverUnrecognisedError = "Processing failed, try again in few minutes!";
